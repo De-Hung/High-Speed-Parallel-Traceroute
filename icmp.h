@@ -38,3 +38,16 @@ struct ICMPHeader {
 #pragma pack(pop)
 
 USHORT ip_checksum(USHORT* buffer, int size);
+struct HopInfo {
+    double sendTime = 0;
+    double rtt = -1;
+    UINT   routerIP = 0;
+    int    probes = 0;
+    bool   replied = false;
+    bool   isDest = false;
+    int    errType = -1;
+    int    errCode = -1;
+};
+
+double nowUs(); // timer visible to main
+bool recvReply(SOCKET s, HopInfo hops[], int timeoutMs, UINT destIP);
