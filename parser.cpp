@@ -4,13 +4,13 @@
 
 // Reads name starting at off
 // Returns NULL on success, else ++ message
-static const char* rdName (const unsigned char* b, int len, int off, std::string& out, int& nxt) {
+const char* rdName (const unsigned char* b, int len, int off, std::string& out, int& nxt) {
 	out.clear();
 	nxt = -1;
 	int pos = off, jump = 0;
 
 	while (true) {
-		if (pos >= len) return "++ invalid record: truncated name"; // 4
+		if (pos >= len) return "++ invalid record: truncated name";
 		unsigned char c = b[pos];
 
 		if (c == 0) { // end of name
@@ -19,20 +19,20 @@ static const char* rdName (const unsigned char* b, int len, int off, std::string
 		}
 
 		if ((c & 0xC0) == 0xC0) { // compression jump
-			if (pos + 1 >= len) return "++ invalid record: truncated jump offset"; // 6
+			if (pos + 1 >= len) return "++ invalid record: truncated jump offset";
 			
 			int tgt = ((c & 0x3F) << 8) | b[pos + 1];
 			if (nxt < 0) nxt = pos + 2;
-			if (tgt >= len) return "++ invalid record: jump beyond packet boundary"; // 3
-			if (tgt < (int)sizeof(FixedDNSheader)) return "++ invalid record: jump into fixed DNS header"; // 7
-			if (++jump > len) return "++ invalid record: jump loop"; // 8
+			if (tgt >= len) return "++ invalid record: jump beyond packet boundary";
+			if (tgt < (int)sizeof(FixedDNSheader)) return "++ invalid record: jump into fixed DNS header";
+			if (++jump > len) return "++ invalid record: jump loop";
 			
 			pos = tgt;
 			continue;
 		}
 
-		if (c & 0xC0) return "++ invalid record: bad label type"; // Case handout doesn't list
-		if (pos + 1 + c > len) return "++ invalid record: truncated name"; // 4
+		if (c & 0xC0) return "++ invalid record: bad label type";
+		if (pos + 1 + c > len) return "++ invalid record: truncated name";
 		if (!out.empty()) out += '.';
 
 		out.append((const char*)b + pos + 1, c);
@@ -50,13 +50,13 @@ static const char* tName(int t) {
 	}
 }
 
-// Parses records of one section starting at off. Returns false on ++ error.
+// Parse records of each section. Returns false on ++ error.
 static bool prsSec(const unsigned char* b, int len, int& off, int cnt, const char* ttl, bool isQ) {
 	printf("%s\n", ttl);
 
 	for (int i = 0; i < cnt; i++) {
 		if (off >= len) {
-			printf("++ invalid section: not enough records\n"); // 2
+			printf("++ invalid section: not enough records\n");
 			return false;
 		}
 
@@ -70,7 +70,7 @@ static bool prsSec(const unsigned char* b, int len, int& off, int cnt, const cha
 
 		if (isQ) {
 			if (off + (int)sizeof(QueryHeader) > len) {
-				printf("++ invalid record: truncated question header\n"); // 5
+				printf("++ invalid record: truncated question header\n");
 				return false;
 			}
 
@@ -81,7 +81,7 @@ static bool prsSec(const unsigned char* b, int len, int& off, int cnt, const cha
 		}
 
 		if (off + (int)sizeof(DNSanswerHdr) > len) {
-			printf("++ invalid record: truncated RR answer header\n"); // 5
+			printf("++ invalid record: truncated RR answer header\n");
 			return false;
 		}
 
@@ -92,7 +92,7 @@ static bool prsSec(const unsigned char* b, int len, int& off, int cnt, const cha
 		off += sizeof(DNSanswerHdr);
 
 		if (off + rl > len) {
-			printf("++ invalid record: RR value length stretches the answer beyond packet\n"); // 9
+			printf("++ invalid record: RR value length stretches the answer beyond packet\n");
 			return false;
 		}
 
@@ -116,7 +116,7 @@ static bool prsSec(const unsigned char* b, int len, int& off, int cnt, const cha
 
 void prsR(const char* rsp, int len, USHORT txid) {
 	if (len < (int)sizeof(FixedDNSheader)) {
-		printf("++ invalid reply: packet smaller than fixed DNS header\n"); // 1
+		printf("++ invalid reply: packet smaller than fixed DNS header\n");
 		return;
 	}
 
@@ -133,7 +133,7 @@ void prsR(const char* rsp, int len, USHORT txid) {
 	printf("  TXID 0x%.4X, flags 0x%.4X, questions %d, answers %d, authority %d, additional %d\n", id, flag, nq, nan, nau, nad);
 
 	if (id != txid) {
-		printf("++ invalid reply : TXID mismatch, sent 0x%.4X, received 0x%.4X\n", txid, id); // 1
+		printf("++ invalid reply : TXID mismatch, sent 0x%.4X, received 0x%.4X\n", txid, id);
 		return;
 	}
 
@@ -142,6 +142,7 @@ void prsR(const char* rsp, int len, USHORT txid) {
 		printf("  failed with Rcode = %d\n", rc);
 		return;
 	}
+
 	printf("  succeeded with Rcode = %d\n", rc);
 	int off = sizeof(FixedDNSheader);
 
@@ -150,4 +151,40 @@ void prsR(const char* rsp, int len, USHORT txid) {
 	if (!prsSec(b, len, off, nau, "  ------------ [authority] ----------", false)) return;
 	
 	prsSec(b, len, off, nad, "  ------------ [additional] ---------", false);
+}
+
+bool parsePTR(const char* rsp, int len, std::string& out) {
+	if (len < (int)sizeof(FixedDNSheader)) return false;
+	
+	const unsigned char* b = (const unsigned char*)rsp;
+	const FixedDNSheader* f = (const FixedDNSheader*)rsp;
+
+	if ((ntohs(f->flags) & 0xF) != DNS_OK) return false;
+
+	int nq = ntohs(f->questions), nan = ntohs(f->answers);
+	int off = sizeof(FixedDNSheader);
+	std::string nm;
+	int nxt;
+
+	for (int i = 0; i < nq; i++) {
+		if (rdName(b, len, off, nm, nxt)) return false;
+		off = nxt + (int)sizeof(QueryHeader);
+		if (off > len) return false;
+	}
+
+	for (int i = 0; i < nan; i++) {
+		if (rdName(b, len, off, nm, nxt)) return false;
+		off = nxt;
+
+		if (off + (int)sizeof(DNSanswerHdr) > len) return false;
+
+		const DNSanswerHdr* ah = (const DNSanswerHdr*)(b + off);
+		int typ = ntohs(ah->type), rl = ntohs(ah->len);
+		off += sizeof(DNSanswerHdr);
+
+		if (off + rl > len) return false;
+		if (typ == DNS_PTR) return rdName(b, len, off, out, nxt) == NULL;
+		off += rl;
+	}
+	return false;
 }

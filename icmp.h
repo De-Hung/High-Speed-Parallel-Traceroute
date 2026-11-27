@@ -36,6 +36,7 @@ struct ICMPHeader {
 };
 
 #pragma pack(pop)
+#include <string>
 
 USHORT ip_checksum(USHORT* buffer, int size);
 struct HopInfo {
@@ -47,7 +48,19 @@ struct HopInfo {
     bool   isDest = false;
     int    errType = -1;
     int    errCode = -1;
+    // async DNS
+    std::string dnsName;
+    bool   dnsPending = false;
+    bool   dnsDone = false;
+    double dnsSent = 0;
 };
 
 double nowUs(); // timer visible to main
-bool recvReply(SOCKET s, HopInfo hops[], int timeoutMs, UINT destIP);
+int  handleIcmp(SOCKET s, HopInfo hops[]);
+
+#define DNS_TXID_BASE 0x4000
+
+bool getLocalDNS(sockaddr_in& dns);
+void sendPtrQuery(SOCKET d, const sockaddr_in& dns, HopInfo& h, int hop);
+void handleDns(SOCKET d, const sockaddr_in& dns, HopInfo hops[]);
+void expireDns(HopInfo hops[], double now);
