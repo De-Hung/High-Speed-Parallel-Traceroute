@@ -12,6 +12,7 @@
 #define ICMP_ECHO_REQUEST 8
 
 #pragma pack(push, 1)
+
 struct IPHeader {
     UCHAR  h_len : 4;
     UCHAR  version : 4;
@@ -33,6 +34,7 @@ struct ICMPHeader {
     USHORT id;
     USHORT seq;
 };
+
 #pragma pack(pop)
 
 USHORT ip_checksum(USHORT* buffer, int size);

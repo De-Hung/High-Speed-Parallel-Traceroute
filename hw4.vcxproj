@@ -139,19 +139,22 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\dns.h" />
-    <ClInclude Include="..\net.h" />
-    <ClInclude Include="..\parser.h" />
-    <ClInclude Include="..\pch.h" />
-    <ClInclude Include="..\query.h" />
+    <ClInclude Include="dns.h" />
+    <ClInclude Include="net.h" />
+    <ClInclude Include="parser.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="query.h" />
     <ClInclude Include="icmp.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\main.cpp" />
-    <ClCompile Include="..\net.cpp" />
-    <ClCompile Include="..\parser.cpp" />
-    <ClCompile Include="..\query.cpp" />
-    <ClCompile Include="trace.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="net.cpp" />
+    <ClCompile Include="parser.cpp" />
+    <ClCompile Include="query.cpp" />
+    <ClCompile Include="trace.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />
